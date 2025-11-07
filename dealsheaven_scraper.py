@@ -1,7 +1,7 @@
 # dealsheaven_scraper.py
 import os
+import subprocess
 import time
-import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.edge.service import Service
@@ -22,20 +22,23 @@ from webdriver_manager.microsoft import EdgeChromiumDriverManager
 
 # Function to initialize the WebDriver for Chrome
 def init_driver():
-    # Path to Chromium (pre-installed in Streamlit Cloud)
-    chromium_path = "/usr/bin/chromium-browser"
-    if not os.path.exists(chromium_path):
-        chromium_path = "/usr/bin/chromium"
+    # Install Chromium & Chromedriver inside Streamlit Cloud container (if not installed)
+    if not os.path.exists("/usr/bin/chromedriver"):
+        subprocess.run(
+            "apt-get update && apt-get install -y chromium chromium-driver",
+            shell=True,
+            check=True
+        )
 
     chrome_options = Options()
-    chrome_options.binary_location = chromium_path
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.binary_location = "/usr/bin/chromium"
 
-    service = Service(ChromeDriverManager().install())
+    service = Service("/usr/bin/chromedriver")
     driver = webdriver.Chrome(service=service, options=chrome_options)
     return driver
 
