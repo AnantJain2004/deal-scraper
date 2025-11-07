@@ -9,8 +9,11 @@ from webdriver_manager.microsoft import EdgeChromiumDriverManager
 
 # Function to initialize the WebDriver
 def init_driver():
-    edge_service = Service(EdgeChromiumDriverManager().install())
+    edge_driver_path = r'C:\Users\Anant_Jain\OneDrive\Desktop\Infosys Springboard\Tasks\msedgedriver.exe' # path to driver
+    edge_service = Service(edge_driver_path)
     edge_options = Options()
+    # edge_options.add_argument("--headless=new")  # optional, for no GUI
+    edge_options.add_argument("--disable-gpu")
     return webdriver.Edge(service=edge_service, options=edge_options)
 
 # Function to scrape store list dynamically from the website

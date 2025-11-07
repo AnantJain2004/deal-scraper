@@ -3,18 +3,19 @@ import time
 import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.edge.service import Service as EdgeService
-from selenium.webdriver.edge.options import Options as EdgeOptions
+from selenium.webdriver.edge.service import Service
+from selenium.webdriver.edge.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 # Function to initialize the WebDriver
 def init_driver():
-    options = EdgeOptions()
-    options.use_chromium = True
-    service = EdgeService()
-    driver = webdriver.Edge(service=service, options=options)
-    return driver
+    edge_driver_path = r'C:\Users\Anant_Jain\OneDrive\Desktop\Infosys Springboard\Tasks\msedgedriver.exe' # path to driver
+    edge_service = Service(edge_driver_path)
+    edge_options = Options()
+    # edge_options.add_argument("--headless=new")  # optional, for no GUI
+    edge_options.add_argument("--disable-gpu")
+    return webdriver.Edge(service=edge_service, options=edge_options)
 
 # Function to get section URLs from the navigation menu
 def get_section_urls(driver):
