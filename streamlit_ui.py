@@ -5,6 +5,8 @@ from dealsheaven_scraper import fetch_store_list, scrape_deals
 from behance_scraper import get_section_urls, scrape_behance, init_driver
 import json
 from io import BytesIO
+import os
+os.environ['WDM_LOG_LEVEL'] = '0'
 
 # Streamlit UI
 def main():

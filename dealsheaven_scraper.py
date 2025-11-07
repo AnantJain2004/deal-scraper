@@ -5,16 +5,32 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.edge.service import Service
 from selenium.webdriver.edge.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.microsoft import EdgeChromiumDriverManager
 
-# Function to initialize the WebDriver
+# Function to initialize the WebDriver for Edge
+# def init_driver():
+#     edge_driver_path = r'C:\Users\Anant_Jain\OneDrive\Desktop\Infosys Springboard\Tasks\msedgedriver.exe' # path to driver
+#     edge_service = Service(edge_driver_path)
+#     edge_options = Options()
+#     # edge_options.add_argument("--headless=new")  # optional, for no GUI
+#     edge_options.add_argument("--disable-gpu")
+#     return webdriver.Edge(service=edge_service, options=edge_options)
+
+# Function to initialize the WebDriver for Chrome
 def init_driver():
-    edge_driver_path = r'C:\Users\Anant_Jain\OneDrive\Desktop\Infosys Springboard\Tasks\msedgedriver.exe' # path to driver
-    edge_service = Service(edge_driver_path)
-    edge_options = Options()
-    # edge_options.add_argument("--headless=new")  # optional, for no GUI
-    edge_options.add_argument("--disable-gpu")
-    return webdriver.Edge(service=edge_service, options=edge_options)
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")  # run without UI
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--window-size=1920,1080")
+
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+    return driver
 
 # Function to scrape store list dynamically from the website
 def fetch_store_list():
