@@ -6,6 +6,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.edge.service import Service
 from selenium.webdriver.edge.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
+import chromedriver_autoinstaller
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
@@ -22,14 +23,18 @@ from selenium.webdriver.support import expected_conditions as EC
 
 # Function to initialize the WebDriver for Chrome
 def init_driver():
+    # Automatically install and set up the correct chromedriver
+    chromedriver_autoinstaller.install()
+
     chrome_options = Options()
-    chrome_options.add_argument("--headless")  # run without UI
-    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--headless")  # Headless mode for Streamlit Cloud
     chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
 
-    service = Service(ChromeDriverManager().install())
+    service = Service()  # Let Selenium find the driver automatically
     driver = webdriver.Chrome(service=service, options=chrome_options)
     return driver
 
