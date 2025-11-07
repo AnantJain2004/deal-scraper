@@ -1,6 +1,4 @@
 # behance_scraper.py
-import os
-import subprocess
 import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -21,26 +19,26 @@ from selenium.webdriver.support import expected_conditions as EC
 #     return webdriver.Edge(service=edge_service, options=edge_options)
 
 # Function to initialize the WebDriver for Chrome
-def init_driver():
-    # Install Chromium & Chromedriver inside Streamlit Cloud container (if not installed)
-    if not os.path.exists("/usr/bin/chromedriver"):
-        subprocess.run(
-            "apt-get update && apt-get install -y chromium chromium-driver",
-            shell=True,
-            check=True
-        )
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 
+def init_driver():
+    # Use preinstalled Chromium and Chromedriver on Streamlit Cloud
     chrome_options = Options()
     chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--window-size=1920,1080")
-    chrome_options.binary_location = "/usr/bin/chromium"
 
+    # Explicit paths for Streamlit Cloud
+    chrome_options.binary_location = "/usr/bin/chromium-browser"
     service = Service("/usr/bin/chromedriver")
+
     driver = webdriver.Chrome(service=service, options=chrome_options)
     return driver
+
 
 # Function to get section URLs from the navigation menu
 def get_section_urls(driver):
