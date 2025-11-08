@@ -100,40 +100,106 @@ def fetch_store_list():
     return stores
 
 # Function to scrape deals from the selected store
-def scrape_deals(store_url, page_count=1, search_query=None):
-    driver = init_driver()
-    products = []
+# def scrape_deals(store_url, page_count=1, search_query=None):
+#     driver = init_driver()
+#     products = []
     
+#     for page in range(1, page_count + 1):
+#         url = f"{store_url}?page={page}"
+#         driver.get(url)
+#         time.sleep(2)
+
+#         product_items = driver.find_elements(By.CLASS_NAME, "product-item-detail")
+#         for item in product_items:
+#             try:
+#                 product_name = item.find_element(By.TAG_NAME, "h3").get_attribute("title")
+#                 if search_query and search_query.lower() not in product_name.lower():
+#                     continue
+#                 product_link = item.find_element(By.TAG_NAME, "a").get_attribute("href")
+#                 image_link = item.find_element(By.CSS_SELECTOR, ".product-img img").get_attribute("src")
+#                 time_info = item.find_element(By.CLASS_NAME, "time").text
+#                 mrp = item.find_element(By.CLASS_NAME, "price").text.replace("₹", "").strip()
+#                 discounted_price = item.find_element(By.CLASS_NAME, "spacail-price").text.replace("₹", "").strip()
+#                 discount = item.find_element(By.CLASS_NAME, "discount").text
+
+#                 product = {
+#                     'Product Name': product_name,
+#                     'Product Link': product_link,
+#                     'Image Link': image_link,
+#                     'Time': time_info,
+#                     'MRP': mrp,
+#                     'Discounted Price': discounted_price,
+#                     'Discount': discount
+#                 }
+#                 products.append(product)
+#             except Exception as e:
+#                 print(f"Error extracting product data: {e}")
+
+#     driver.quit()
+#     return products
+
+def scrape_deals(store_url, page_count=1, search_query=None):
+    products = []
+
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36"
+        )
+    }
+
     for page in range(1, page_count + 1):
-        url = f"{store_url}?page={page}"
-        driver.get(url)
-        time.sleep(2)
+        try:
+            url = f"{store_url}?page={page}"
+            resp = requests.get(url, headers=headers, timeout=15)
+            resp.raise_for_status()
 
-        product_items = driver.find_elements(By.CLASS_NAME, "product-item-detail")
-        for item in product_items:
-            try:
-                product_name = item.find_element(By.TAG_NAME, "h3").get_attribute("title")
-                if search_query and search_query.lower() not in product_name.lower():
-                    continue
-                product_link = item.find_element(By.TAG_NAME, "a").get_attribute("href")
-                image_link = item.find_element(By.CSS_SELECTOR, ".product-img img").get_attribute("src")
-                time_info = item.find_element(By.CLASS_NAME, "time").text
-                mrp = item.find_element(By.CLASS_NAME, "price").text.replace("₹", "").strip()
-                discounted_price = item.find_element(By.CLASS_NAME, "spacail-price").text.replace("₹", "").strip()
-                discount = item.find_element(By.CLASS_NAME, "discount").text
+            soup = BeautifulSoup(resp.text, "html.parser")
+            product_cards = soup.select(".product-item-detail, .deal-list, .product")
 
-                product = {
-                    'Product Name': product_name,
-                    'Product Link': product_link,
-                    'Image Link': image_link,
-                    'Time': time_info,
-                    'MRP': mrp,
-                    'Discounted Price': discounted_price,
-                    'Discount': discount
-                }
-                products.append(product)
-            except Exception as e:
-                print(f"Error extracting product data: {e}")
+            for card in product_cards:
+                try:
+                    title_el = card.select_one("h3, .product-title, a")
+                    title = title_el.get("title") if title_el and title_el.has_attr("title") else title_el.get_text(strip=True) if title_el else "N/A"
 
-    driver.quit()
+                    if search_query and search_query.lower() not in title.lower():
+                        continue
+
+                    link_el = card.select_one("a")
+                    link = link_el.get("href") if link_el else ""
+                    if link.startswith("/"):
+                        link = "https://dealsheaven.in" + link
+
+                    img_el = card.select_one("img")
+                    image = img_el.get("data-src") or img_el.get("src") if img_el else ""
+
+                    price_el = card.select_one(".price, .deal-price")
+                    mrp = price_el.get_text(strip=True).replace("₹", "") if price_el else "N/A"
+
+                    sp_el = card.select_one(".spacail-price, .special-price, .discount-price")
+                    discounted_price = sp_el.get_text(strip=True).replace("₹", "") if sp_el else "N/A"
+
+                    discount_el = card.select_one(".discount, .off")
+                    discount = discount_el.get_text(strip=True) if discount_el else "N/A"
+
+                    time_el = card.select_one(".time, .posted")
+                    posted_time = time_el.get_text(strip=True) if time_el else "N/A"
+
+                    products.append({
+                        "Product Name": title,
+                        "Product Link": link,
+                        "Image Link": image,
+                        "MRP": mrp,
+                        "Discounted Price": discounted_price,
+                        "Discount": discount,
+                        "Time": posted_time
+                    })
+
+                except Exception as e:
+                    print("Error parsing product:", e)
+
+        except Exception as e:
+            print("Error fetching deals:", e)
+
     return products
