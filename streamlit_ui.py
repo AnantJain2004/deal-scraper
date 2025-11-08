@@ -36,8 +36,8 @@ def main():
 
     elif scraper_choice == "Behance":
         st.subheader("Behance Scraper")
-        driver = init_driver()  # Initialize the WebDriver for Behance
-        assets_url, jobs_url = get_section_urls(driver)
+        #driver = init_driver()  # Initialize the WebDriver for Behance
+        assets_url, jobs_url = get_section_urls() #(driver)
 
         section = st.selectbox("Choose section to scrape:", ["Assets", "Jobs"])
         record_limit = st.number_input("Enter the number of items to scrape:", min_value=1, max_value=100, value=10)
@@ -48,10 +48,10 @@ def main():
                 section_url = assets_url if section == "Assets" else jobs_url
 
                 with st.spinner("Scraping data from Behance..."):
-                    items = scrape_behance(driver, section_url, record_limit)
+                    items = scrape_behance(section_url, record_limit) #(driver, section_url, record_limit)
                     st.success("Scraping completed!")
 
-                driver.quit()
+                # driver.quit()
 
                 if items:
                     # Apply the search filter across all fields, case-insensitive
