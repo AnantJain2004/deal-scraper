@@ -160,8 +160,17 @@ def scrape_deals(store_url, page_count=1, search_query=None):
 
             for card in product_cards:
                 try:
-                    title_el = card.select_one("h3, .product-title, a")
-                    title = title_el.get("title") if title_el and title_el.has_attr("title") else title_el.get_text(strip=True) if title_el else "N/A"
+                    title_el = card.select_one("h3")
+                    if title_el:
+                        # Some titles are truncated in text but full title exists in 'title' attribute
+                        title = title_el.get("title") or title_el.get_text(strip=True)
+                    else:
+                        # fallback: try link text
+                        link_el = card.select_one("a")
+                        title = link_el.get("title") or link_el.get_text(strip=True) if link_el else "N/A"
+
+                    # Clean and normalize text
+                    title = title.strip().replace("\n", " ").replace("  ", " ")
 
                     if search_query and search_query.lower() not in title.lower():
                         continue
