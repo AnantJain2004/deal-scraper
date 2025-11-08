@@ -19,71 +19,20 @@ from selenium.webdriver.chrome.options import Options
 
 # Function to initialize the WebDriver for Chrome
 def init_driver():
-    """
-    Initialize a headless Chrome/Chromium webdriver suitable for Streamlit Cloud.
-
-    This function checks common Chromium binary & Chromedriver paths that Streamlit Cloud
-    typically provides. If it cannot find valid binaries, it raises a RuntimeError
-    with helpful instructions that will show in Streamlit logs.
-    """
     chrome_options = Options()
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--window-size=1920,1080")
-    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
 
-    # Common binary and driver paths on different hosts / Streamlit images
-    possible_binaries = [
-        "/usr/bin/chromium-browser",  # common
-        "/usr/bin/chromium",          # alternative
-        "/usr/bin/google-chrome-stable",
-        "/usr/bin/google-chrome"
-    ]
-    possible_drivers = [
-        "/usr/bin/chromedriver",
-        "/usr/local/bin/chromedriver",
-        "/usr/bin/chrome-driver"
-    ]
+    chrome_bin = os.environ.get("CHROME_BIN", "/usr/bin/chromium")
+    chrome_driver = os.environ.get("CHROMEDRIVER_PATH", "/usr/bin/chromedriver")
 
-    chrome_binary = None
-    for p in possible_binaries:
-        if p and os.path.exists(p):
-            chrome_binary = p
-            break
+    chrome_options.binary_location = chrome_bin
+    service = Service(chrome_driver)
 
-    driver_path = None
-    for d in possible_drivers:
-        if d and os.path.exists(d):
-            driver_path = d
-            break
-
-    # If either missing, raise a clear error (Streamlit will show this in logs)
-    if not chrome_binary or not driver_path:
-        missing = []
-        if not chrome_binary:
-            missing.append("Chromium/Chrome binary (tried: {})".format(", ".join(possible_binaries)))
-        if not driver_path:
-            missing.append("chromedriver binary (tried: {})".format(", ".join(possible_drivers)))
-
-        hint = (
-            "Selenium cannot find the browser/driver in the container.\n"
-            "- Streamlit Cloud usually provides Chromium at /usr/bin/chromium-browser and "
-            "chromedriver at /usr/bin/chromedriver.\n"
-            "- If you're running locally, ensure Chrome/Chromium is installed and chromedriver "
-            "matches its version, or install webdriver-manager for local testing.\n\n"
-            "Missing items: " + "; ".join(missing)
-        )
-        raise RuntimeError(hint)
-
-    # Set binary and driver explicitly
-    chrome_options.binary_location = chrome_binary
-    service = Service(driver_path)
-
-    # Create the driver
-    driver = webdriver.Chrome(service=service, options=chrome_options)
-    return driver
+    return webdriver.Chrome(service=service, options=chrome_options)
 
 # Function to scrape store list dynamically from the website
 def fetch_store_list():
