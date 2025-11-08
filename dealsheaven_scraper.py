@@ -1,6 +1,8 @@
 # dealsheaven_scraper.py
 import os
 import time
+import requests
+from bs4 import BeautifulSoup
 import chromedriver_autoinstaller
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -40,26 +42,56 @@ def init_driver():
     return driver
 
 # Function to scrape store list dynamically from the website
-def fetch_store_list():
-    driver = init_driver()
-    driver.get("https://dealsheaven.in/stores")
-    time.sleep(2)
+# def fetch_store_list():
+#     driver = init_driver()
+#     driver.get("https://dealsheaven.in/stores")
+#     time.sleep(2)
     
-    stores = {}
-    headers = driver.find_elements(By.TAG_NAME, "h4")
-    store_lists = driver.find_elements(By.CLASS_NAME, "store-listings")
+#     stores = {}
+#     headers = driver.find_elements(By.TAG_NAME, "h4")
+#     store_lists = driver.find_elements(By.CLASS_NAME, "store-listings")
 
-    for header, store_list in zip(headers, store_lists):
-        store_category = header.text.strip()
-        store_items = store_list.find_elements(By.TAG_NAME, "a")
+#     for header, store_list in zip(headers, store_lists):
+#         store_category = header.text.strip()
+#         store_items = store_list.find_elements(By.TAG_NAME, "a")
         
-        for store in store_items:
-            store_name = store.text.strip()
-            store_link = store.get_attribute("href")
-            if store_name not in stores:
-                stores[store_name] = store_link
+#         for store in store_items:
+#             store_name = store.text.strip()
+#             store_link = store.get_attribute("href")
+#             if store_name not in stores:
+#                 stores[store_name] = store_link
 
-    driver.quit()
+#     driver.quit()
+#     return stores
+
+# Function to fetch store list without using Selenium (works on Render)
+def fetch_store_list():
+    url = "https://dealsheaven.in/stores"
+    stores = {}
+
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        # Find all store link elements
+        store_elements = soup.select(".store-listings a, .store a")
+
+        for store in store_elements:
+            name = store.get_text(strip=True)
+            href = store.get("href")
+
+            if name and href:
+                if href.startswith("/"):
+                    href = "https://dealsheaven.in" + href
+                stores[name] = href
+
+        if not stores:
+            print("⚠️ No stores found — site structure may have changed.")
+
+    except Exception as e:
+        print(f"Error fetching store list: {e}")
+
     return stores
 
 # Function to scrape deals from the selected store
