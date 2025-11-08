@@ -70,24 +70,29 @@ def fetch_store_list():
     stores = {}
 
     try:
-        response = requests.get(url, timeout=10)
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/120.0.0.0 Safari/537.36"
+            )
+        }
+        response = requests.get(url, headers=headers, timeout=15)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
 
-        # Find all store link elements
-        store_elements = soup.select(".store-listings a, .store a")
-
-        for store in store_elements:
-            name = store.get_text(strip=True)
-            href = store.get("href")
-
+        # Find all store blocks (Dealsheaven groups stores under categories)
+        all_links = soup.select("a[href*='/store/']")
+        for link in all_links:
+            name = link.get_text(strip=True)
+            href = link.get("href")
             if name and href:
                 if href.startswith("/"):
                     href = "https://dealsheaven.in" + href
                 stores[name] = href
 
         if not stores:
-            print("⚠️ No stores found — site structure may have changed.")
+            print("⚠️ No stores found — possibly blocked or site structure changed.")
 
     except Exception as e:
         print(f"Error fetching store list: {e}")
