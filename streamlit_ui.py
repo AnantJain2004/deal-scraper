@@ -2,7 +2,7 @@
 import streamlit as st
 import pandas as pd
 from dealsheaven_scraper import fetch_store_list, scrape_deals
-from behance_scraper import get_section_urls, scrape_behance, init_driver
+from behance_scraper import get_section_urls, scrape_behance#, init_driver
 import json
 from io import BytesIO
 import os
