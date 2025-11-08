@@ -123,169 +123,120 @@
 #     return items[:record_limit]
 
 # behance_scraper.py (requests + BeautifulSoup version)
-import time
 import requests
 from bs4 import BeautifulSoup
 
-# Common headers to mimic a real browser
-DEFAULT_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
-    ),
-    "Accept-Language": "en-US,en;q=0.9",
-}
-
-# Return canonical section URLs for Behance
-def get_section_urls():
-    """
-    Returns (assets_url, jobs_url).
-    These are stable / canonical pages we can scrape using requests.
-    """
-    assets_url = "https://www.behance.net/search?content=projects"   # lists projects/assets
-    jobs_url = "https://www.behance.net/joblist"                     # jobs listing
-    return assets_url, jobs_url
-
-
-def parse_project_card(a_tag):
-    """
-    Given an <a> tag that likely points to a project, return a dict with
-    Title, Creator (if available), Link, Likes/Views (best-effort).
-    This is best-effort — Behance HTML and classes change frequently.
-    """
-    link = a_tag.get("href")
-    if not link:
-        return None
-    if link.startswith("/"):
-        link = "https://www.behance.net" + link
-
-    # Title attempt: many project links include a nested img alt or a span with title
-    title = a_tag.get("aria-label") or a_tag.get("title") or ""
-    if not title:
-        # try to find text child or nested elements
-        title_el = a_tag.select_one("img[alt]") or a_tag.select_one("h3") or a_tag.select_one("div")
-        if title_el:
-            title = title_el.get("alt") if title_el.name == "img" else title_el.get_text(strip=True)
-
-    # Creator is often present in a sibling or nested element
-    creator = ""
-    owner_el = a_tag.select_one(".ProjectCover-owner, .Owner") or a_tag.find_next("a", {"href": lambda x: x and "/people/" in x})
-    if owner_el:
-        creator = owner_el.get_text(strip=True)
-
-    # Stats (likes / views) - best-effort
-    likes = "N/A"
-    views = "N/A"
-    stat_spans = a_tag.select(".stats span") or a_tag.select(".ProjectCover-stats span")
-    if stat_spans:
-        try:
-            likes = stat_spans[0].get_text(strip=True)
-            if len(stat_spans) > 1:
-                views = stat_spans[1].get_text(strip=True)
-        except Exception:
-            pass
-
-    return {
-        "Title": title or "(no title)",
-        "Creator": creator or "N/A",
-        "Link": link,
-        "Likes": likes,
-        "Views": views,
-    }
-
-
 def scrape_behance(section_url, record_limit=10):
     """
-    Scrape Behance section (assets/projects or jobs) using requests+BeautifulSoup.
-    - section_url: URL returned from get_section_urls()
-    - record_limit: number of items to return
-    Returns a list of dicts (structure differs slightly for assets vs jobs).
+    Scrapes Behance Jobs or Assets using requests + BeautifulSoup.
+    Works with current Behance structure (Nov 2025).
     """
-    headers = DEFAULT_HEADERS.copy()
     items = []
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36"
+        ),
+        "Accept-Language": "en-US,en;q=0.9",
+    }
 
     try:
-        # fetch first page
-        resp = requests.get(section_url, headers=headers, timeout=15)
-        resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "html.parser")
+        response = requests.get(section_url, headers=headers, timeout=15)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
 
-        # Distinguish between assets/projects and jobs by URL/content
+        # ===============================
+        # JOBS SECTION (https://www.behance.net/joblist)
+        # ===============================
         if "job" in section_url or "joblist" in section_url:
-            # Jobs: look for links that include '/job/' or job-card containers
-            # Best-effort selectors
-            job_cards = soup.select("a[href*='/job/'], .JobCard, .job-card, a[href*='joblist']")
-            seen = set()
-            for el in job_cards:
-                if len(items) >= record_limit:
-                    break
-                # find anchor and text
-                a = el if el.name == "a" else el.select_one("a") or el
-                href = a.get("href") if a else None
-                if not href:
-                    continue
-                if href.startswith("/"):
-                    href = "https://www.behance.net" + href
-                # title/company/location: try best-effort
-                title = (a.get_text(strip=True) or "").split("\n")[0]
-                # try more precise fields if available
-                company = el.select_one(".JobCard-company, .company") 
-                company_text = company.get_text(strip=True) if company else ""
-                location_el = el.select_one(".JobCard-jobLocation, .location")
-                location_text = location_el.get_text(strip=True) if location_el else ""
-                description_el = el.select_one(".JobCard-jobDescription, .description")
-                description = description_el.get_text(strip=True) if description_el else ""
+            job_cards = soup.select("div.JobCard-jobCard-mzZ")
 
-                item = {
-                    "Title": title or "Job listing",
-                    "Company": company_text or "N/A",
-                    "Location": location_text or "N/A",
-                    "Link": href,
-                    "Description": description or "N/A"
-                }
-                key = href
-                if key not in seen:
-                    items.append(item)
-                    seen.add(key)
+            for job in job_cards[:record_limit]:
+                # Job link
+                link_tag = job.select_one("a.JobCard-jobCardLink-Ywm")
+                link = (
+                    "https://www.behance.net" + link_tag["href"]
+                    if link_tag and link_tag.get("href", "").startswith("/")
+                    else (link_tag["href"] if link_tag else "")
+                )
 
-            return items[:record_limit]
+                # Job title
+                title_tag = job.select_one("h3.JobCard-jobTitle-LS4")
+                title = title_tag.get_text(strip=True) if title_tag else "N/A"
 
+                # Company
+                company_tag = job.select_one("p.JobCard-company-GQS")
+                company = company_tag.get_text(strip=True) if company_tag else "N/A"
+
+                # Location
+                location_tag = job.select_one("p.JobCard-jobLocation-sjd")
+                location = location_tag.get_text(strip=True) if location_tag else "N/A"
+
+                # Description
+                desc_tag = job.select_one("p.JobCard-jobDescription-SYp")
+                description = desc_tag.get_text(strip=True) if desc_tag else "N/A"
+
+                # Time posted
+                time_tag = job.select_one("span.JobCard-time-Cvz")
+                time_posted = time_tag.get_text(strip=True) if time_tag else "N/A"
+
+                items.append({
+                    "Title": title,
+                    "Company": company,
+                    "Location": location,
+                    "Description": description,
+                    "Time Posted": time_posted,
+                    "Link": link
+                })
+
+        # ===============================
+        # ASSETS / PROJECTS SECTION (https://www.behance.net/search/assets)
+        # ===============================
         else:
-            # Assets/projects page
-            # Try to find project anchors. Behance search pages often contain anchors with '/gallery' or '/projects'
-            project_anchors = soup.select("a[href*='/gallery/'], a[href*='/projects/'], a[data-project-id]")
-            seen = set()
-            for a in project_anchors:
-                if len(items) >= record_limit:
-                    break
-                parsed = parse_project_card(a)
-                if not parsed:
-                    continue
-                key = parsed["Link"]
-                if key not in seen:
-                    items.append(parsed)
-                    seen.add(key)
+            project_cards = soup.select("a.ProjectCoverNeue-coverLink-U39")
 
-            # If none found, fallback: try to parse generic project tiles
-            if not items:
-                tiles = soup.select(".ProjectCover-root, .project-cover, .project-tile a")
-                for a in tiles:
-                    if len(items) >= record_limit:
-                        break
-                    anchor = a if a.name == "a" else a.select_one("a")
-                    if not anchor:
-                        continue
-                    parsed = parse_project_card(anchor)
-                    if parsed and parsed["Link"] not in seen:
-                        items.append(parsed)
-                        seen.add(parsed["Link"])
+            for a in project_cards[:record_limit]:
+                project_link = (
+                    "https://www.behance.net" + a["href"]
+                    if a and a.get("href", "").startswith("/")
+                    else (a["href"] if a else "")
+                )
 
-            return items[:record_limit]
+                # Title
+                title_tag = soup.find("a", {"class": "Title-title-lpJ"})
+                title = title_tag.get_text(strip=True) if title_tag else "N/A"
 
-    except requests.HTTPError as he:
-        print("HTTP error while scraping Behance:", he)
+                # Creator
+                creator_tag = soup.find("a", {"class": "Owners-owner-EEG"})
+                creator = creator_tag.get_text(strip=True) if creator_tag else "N/A"
+
+                # Likes and Views
+                stats_div = soup.find("div", {"class": "Stats-stats-Q1s"})
+                if stats_div:
+                    spans = stats_div.find_all("span")
+                    likes = spans[0].get_text(strip=True) if len(spans) > 0 else "N/A"
+                    views = spans[1].get_text(strip=True) if len(spans) > 1 else "N/A"
+                else:
+                    likes = "N/A"
+                    views = "N/A"
+
+                items.append({
+                    "Title": title,
+                    "Creator": creator,
+                    "Likes": likes,
+                    "Views": views,
+                    "Link": project_link
+                })
+
     except Exception as e:
-        print("Error scraping Behance:", e)
+        print(f"Error scraping Behance: {e}")
 
     return items
+
+
+def get_section_urls():
+    """Returns main URLs for Assets and Jobs."""
+    assets_url = "https://www.behance.net/search/assets"
+    jobs_url = "https://www.behance.net/joblist"
+    return assets_url, jobs_url
