@@ -1,41 +1,33 @@
-# =============================================
-# Dockerfile for Streamlit + Selenium on Render
-# =============================================
-
+# Dockerfile — Render-friendly, installs Google Chrome
 FROM python:3.10-slim
 
-# Prevent interactive prompts during apt installs
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install system dependencies and Google Chrome
-RUN apt-get update && apt-get install -y wget gnupg unzip \
-    && wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - \
-    && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list \
+# Install system deps and add Google Chrome repo (use gpg dearmor, not apt-key)
+RUN apt-get update && apt-get install -y \
+    wget \
+    gnupg \
+    ca-certificates \
+    curl \
+    unzip \
+    && curl -fsSL https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" \
+       > /etc/apt/sources.list.d/google-chrome.list \
     && apt-get update && apt-get install -y google-chrome-stable \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
-# Install ChromeDriver (matches Chrome version automatically)
-RUN LATEST=$(curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE) && \
-    wget -O /tmp/chromedriver.zip https://chromedriver.storage.googleapis.com/${LATEST}/chromedriver_linux64.zip && \
-    unzip /tmp/chromedriver.zip -d /usr/local/bin/ && \
-    rm /tmp/chromedriver.zip
-
-# Set environment variables
-ENV CHROME_BIN=/usr/bin/google-chrome
-ENV CHROMEDRIVER_PATH=/usr/local/bin/chromedriver
-
-# Set working directory
+# Working dir and copy code
 WORKDIR /app
-
-# Copy files
 COPY . .
 
-# Upgrade pip and install dependencies
+# Upgrade pip then install python deps
 RUN pip install --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Expose Streamlit port
+# Environment variables used by our code
+ENV CHROME_BIN=/usr/bin/google-chrome
+
 EXPOSE 8501
 
-# Run Streamlit app
+# Run streamlit
 CMD ["streamlit", "run", "streamlit_ui.py", "--server.port=8501", "--server.address=0.0.0.0"]

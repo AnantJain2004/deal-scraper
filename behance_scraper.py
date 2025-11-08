@@ -1,6 +1,7 @@
 # behance_scraper.py
 import os
 import time
+import chromedriver_autoinstaller
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.edge.service import Service
@@ -21,20 +22,24 @@ from selenium.webdriver.support import expected_conditions as EC
 
 # Function to initialize the WebDriver for Chrome
 def init_driver():
+    # Install the chromedriver that matches installed Chrome (places binary in local folder / PATH)
+    chromedriver_autoinstaller.install()
+
     chrome_options = Options()
-    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--headless=new")   # or "--headless"
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--window-size=1920,1080")
 
-    chrome_bin = os.environ.get("CHROME_BIN", "/usr/bin/chromium")
-    chrome_driver = os.environ.get("CHROMEDRIVER_PATH", "/usr/bin/chromedriver")
-
+    # Explicitly point to chrome binary from Dockerfile
+    chrome_bin = os.environ.get("CHROME_BIN", "/usr/bin/google-chrome")
     chrome_options.binary_location = chrome_bin
-    service = Service(chrome_driver)
 
-    return webdriver.Chrome(service=service, options=chrome_options)
+    # Let chromedriver_autoinstaller put chromedriver on PATH; Service() without path will use it
+    service = Service()
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+    return driver
 
 # Function to get section URLs from the navigation menu
 def get_section_urls(driver):
