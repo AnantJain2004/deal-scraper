@@ -2,7 +2,7 @@ streamlit
 selenium
 pandas
 openpyxl
-# chromedriver-autoinstaller
+chromedriver-autoinstaller
 webdriver-manager
 requests
 beautifulsoup4
