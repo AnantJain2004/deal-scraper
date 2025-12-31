@@ -36,58 +36,71 @@ def main():
 
     elif scraper_choice == "Behance":
         st.subheader("Behance Scraper")
-        #driver = init_driver()  # Initialize the WebDriver for Behance
-        assets_url, jobs_url = get_section_urls() #(driver)
+
+        assets_url, jobs_url = get_section_urls()
 
         section = st.selectbox("Choose section to scrape:", ["Assets", "Jobs"])
-        record_limit = st.number_input("Enter the number of items to scrape:", min_value=1, max_value=100, value=10)
+        record_limit = st.number_input(
+            "Enter the number of items to scrape:",
+            min_value=1,
+            max_value=100,
+            value=10
+        )
         search_term = st.text_input("Enter a search term to filter items (optional):")
 
         if st.button("🔍 Scrape Data"):
-            if assets_url and jobs_url:
-                section_url = assets_url if section == "Assets" else jobs_url
+            section_url = assets_url if section == "Assets" else jobs_url
 
-                with st.spinner("Scraping data from Behance..."):
-                    items = scrape_behance(section_url, record_limit) #(driver, section_url, record_limit)
-                    st.success("Scraping completed!")
+            with st.spinner("Scraping data from Behance..."):
+                items = scrape_behance(section_url, record_limit)
 
-                # driver.quit()
+            if items:
+                # Optional search filter
+                if search_term:
+                    items = [
+                        item for item in items
+                        if any(search_term.lower() in str(v).lower() for v in item.values())
+                    ]
 
-                if items:
-                    # Apply the search filter across all fields, case-insensitive
-                    if search_term:
-                        filtered_items = [
-                            item for item in items 
-                            if any(search_term.lower() in str(value).lower() for value in item.values())
-                        ]
-                        st.info(f"Found {len(filtered_items)} items matching '{search_term}' in the first {record_limit} items.")
-                        df = pd.DataFrame(filtered_items)
-                    else:
-                        df = pd.DataFrame(items)
-                        st.info(f"Displaying the first {record_limit} items.")
+                df = pd.DataFrame(items)
 
-                    if not df.empty:
-                        df.insert(0, 'S.No.', range(1, len(df) + 1))
-                        df['Link'] = df['Link'].apply(lambda x: f'<a href="{x}" target="_blank">View Item</a>')
-                        
-                        st.markdown(df.to_html(escape=False, index=False), unsafe_allow_html=True)
+                if not df.empty:
+                    df.insert(0, "S.No.", range(1, len(df) + 1))
+                    df["Link"] = df["Link"].apply(
+                        lambda x: f'<a href="{x}" target="_blank">View</a>'
+                    )
 
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.download_button("📥 Download as CSV", df.to_csv(index=False).encode('utf-8'), "items.csv", "text/csv")
-                        with col2:
-                            st.download_button("📥 Download as JSON", json.dumps(items, indent=4), "items.json", "application/json")
-                        with col3:
-                            excel_buffer = BytesIO()
-                            df.to_excel(excel_buffer, index=False, engine='openpyxl')
-                            excel_buffer.seek(0)
-                            st.download_button("📥 Download as Excel", excel_buffer, "items.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                    else:
-                        st.warning("No items to display.")
+                    st.markdown(df.to_html(escape=False, index=False), unsafe_allow_html=True)
+
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.download_button(
+                            "📥 Download CSV",
+                            df.to_csv(index=False).encode("utf-8"),
+                            "behance_data.csv",
+                            "text/csv"
+                        )
+                    with col2:
+                        st.download_button(
+                            "📥 Download JSON",
+                            json.dumps(items, indent=4),
+                            "behance_data.json",
+                            "application/json"
+                        )
+                    with col3:
+                        excel_buffer = BytesIO()
+                        df.to_excel(excel_buffer, index=False, engine="openpyxl")
+                        excel_buffer.seek(0)
+                        st.download_button(
+                            "📥 Download Excel",
+                            excel_buffer,
+                            "behance_data.xlsx",
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
                 else:
-                    st.warning("No items found.")
+                    st.warning("No items found after filtering.")
             else:
-                st.error("Failed to retrieve section URLs from Behance. Please try again.")
+                st.warning("No items found.")
 
 if __name__ == "__main__":
     main()

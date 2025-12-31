@@ -3,7 +3,7 @@ FROM python:3.10-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install system deps and add Google Chrome repo (use gpg dearmor, not apt-key)
+# Install system deps and add Google Chrome repo
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
